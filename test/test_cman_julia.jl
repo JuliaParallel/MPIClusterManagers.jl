@@ -1,15 +1,16 @@
 using Test
-using MPI
+using MPIClusterManagers
 using Distributed
 
-import MPI: mpiexec
+using MPIClusterManagers: mpiexec
+import MPI
 
 # Start workers via `mpiexec` that communicate among themselves via MPI;
 # communicate with the workers via TCP
 if !Sys.iswindows() && occursin( "OpenRTE", open(f->read(f, String),`$mpiexec --version`))
-    mgr = MPI.MPIManager(np=4, mpirun_cmd=`$mpiexec --oversubscribe -n 4`)
+    mgr = MPIManager(np=4, mpirun_cmd=`$mpiexec --oversubscribe -n 4`)
 else
-    mgr = MPI.MPIManager(np=4)
+    mgr = MPIManager(np=4)
 end
 addprocs(mgr)
 

@@ -1,9 +1,10 @@
 using Test
-using MPI
+using MPIClusterManagers
 using Distributed
+import MPI
 
 # This uses TCP to communicate with the workers
-mgr = MPI.start_main_loop(MPI.TCP_TRANSPORT_ALL)
+mgr = MPIClusterManagers.start_main_loop(TCP_TRANSPORT_ALL)
 
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
@@ -30,4 +31,4 @@ s = @distributed (+) for i in 1:10
 end
 @test s == 385
 
-MPI.stop_main_loop(mgr)
+MPIClusterManagers.stop_main_loop(mgr)

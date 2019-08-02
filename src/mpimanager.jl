@@ -1,9 +1,5 @@
 import Base: kill
-export MPIManager, launch, manage, kill, procs, connect, mpiprocs, @mpi_do
-export TransportMode, MPI_ON_WORKERS, TCP_TRANSPORT_ALL, MPI_TRANSPORT_ALL
-using Distributed
 import Sockets: connect, listenany, accept, IPv4, getsockname, getaddrinfo, wait_connected
-
 
 
 ################################################################################
@@ -144,7 +140,7 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
                 throw(ErrorException("Reuse of MPIManager is not allowed."))
             end
             cookie = string(":cookie_",Distributed.cluster_cookie())
-            setup_cmds = `using MPI\;MPI.setup_worker'('$(mgr.ip),$(mgr.port),$cookie')'`
+            setup_cmds = `import MPIClusterManagers\;MPIClusterManagers.setup_worker'('$(mgr.ip),$(mgr.port),$cookie')'`
             mpi_cmd = `$(mgr.mpirun_cmd) $(params[:exename]) -e $(Base.shell_escape(setup_cmds))`
             open(detach(mpi_cmd))
             mgr.launched = true
@@ -410,9 +406,9 @@ function receive_event_loop(mgr::MPIManager)
     while !isready(mgr.initiate_shutdown)
         (hasdata, stat) = MPI.Iprobe(MPI.MPI_ANY_SOURCE, 0, mgr.comm)
         if hasdata
-            count = Get_count(stat, UInt8)
+            count = MPI.Get_count(stat, UInt8)
             buf = Array{UInt8}(undef, count)
-            from_rank = Get_source(stat)
+            from_rank = MPI.Get_source(stat)
             MPI.Recv!(buf, from_rank, 0, mgr.comm)
 
             streams = get(mgr.rank2streams, from_rank, nothing)

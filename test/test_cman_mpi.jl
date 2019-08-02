@@ -1,9 +1,10 @@
 using Test
-using MPI
+using MPIClusterManagers
 using Distributed
+import MPI
 
 # This uses MPI to communicate with the workers
-mgr = MPI.start_main_loop(MPI.MPI_TRANSPORT_ALL)
+mgr = MPIClusterManagers.start_main_loop(MPI_TRANSPORT_ALL)
 
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
@@ -38,4 +39,4 @@ end
     end
 end
 
-MPI.stop_main_loop(mgr)
+MPIClusterManagers.stop_main_loop(mgr)

@@ -1,0 +1,20 @@
+name = "MPIClusterManagers"
+uuid = "e7922434-ae4b-11e9-05c5-9780451d2c66"
+authors = ["Simon Byrne <simonbyrne@gmail.com>", "Amit Murthhy <amit.murthy@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
+
+[compat]
+julia = "1"
+
+[extras]
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Pkg", "Test"]
