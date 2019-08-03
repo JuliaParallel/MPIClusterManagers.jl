@@ -50,7 +50,7 @@ before_install:
       fi
     fi
 # following can be removed with next MPI.jl release.
-  - export PATH=$HOME/OpenMPI/bin:$HOME/MPICH/bin:$PATH
+  - export PATH=$HOME/$MPI_IMPL/bin:$PATH
   - export CC=mpicc
   - export FC=mpif90
 # Work around OpenMPI attempting to create overly long temporary
