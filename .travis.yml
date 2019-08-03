@@ -28,7 +28,7 @@ cache:
 env:
   - MPI_IMPL=mpich
   - MPI_IMPL=openmpi
-  - MPI_IMPL=intelmpi
+#  - MPI_IMPL=intelmpi
 
 matrix:
   allow_failures:
