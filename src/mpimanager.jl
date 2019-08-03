@@ -391,7 +391,9 @@ function start_main_loop(mode::TransportMode=TCP_TRANSPORT_ALL;
             Distributed.init_worker(cookie, mgr)
             # Start a worker event loop
             receive_event_loop(mgr)
-            MPI.free(comm)
+            if isdefined(MPI, :free) && hasmethod(MPI.free, Tuple{MPI.Comm})
+                MPI.free(comm)
+            end
             MPI.Finalize()
             exit()
         end
