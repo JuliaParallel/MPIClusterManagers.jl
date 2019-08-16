@@ -56,10 +56,11 @@ To execute code with MPI calls on all workers, use `@mpi_do`.
 `@mpi_do manager expr` executes `expr` on all processes that are part of `manager`.
 
 For example:
-```
+```julia
 @mpi_do manager begin
+  using MPI
   comm=MPI.COMM_WORLD
-  println("Hello world, I am $(MPI.Comm_rank(comm)) of $(MPI.Comm_size(comm))"))
+  println("Hello world, I am $(MPI.Comm_rank(comm)) of $(MPI.Comm_size(comm))")
 end
 ```
 executes on all MPI workers belonging to `manager` only
