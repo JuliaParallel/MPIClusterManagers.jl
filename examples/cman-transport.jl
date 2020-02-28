@@ -1,22 +1,23 @@
-using MPI, Distributed
+using MPIClusterManagers, Distributed
+import MPI
 
 MPI.Init()
 rank = MPI.Comm_rank(MPI.COMM_WORLD)
 size = MPI.Comm_size(MPI.COMM_WORLD)
 
-include("01-hello-impl.jl")
-include("02-broadcast-impl.jl")
-include("03-reduce-impl.jl")
-include("04-sendrecv-impl.jl")
+# include("01-hello-impl.jl")
+# include("02-broadcast-impl.jl")
+# include("03-reduce-impl.jl")
+# include("04-sendrecv-impl.jl")
 
 if length(ARGS) == 0
     println("Please specify a transport option to use [MPI|TCP]")
     MPI.Finalize()
     exit(1)
 elseif ARGS[1] == "TCP"
-    manager = MPI.start_main_loop(TCP_TRANSPORT_ALL) # does not return on worker
+    manager = MPIClusterManagers.start_main_loop(TCP_TRANSPORT_ALL) # does not return on worker
 elseif ARGS[1] == "MPI"
-    manager = MPI.start_main_loop(MPI_TRANSPORT_ALL) # does not return on worker
+    manager = MPIClusterManagers.start_main_loop(MPI_TRANSPORT_ALL) # does not return on worker
 else
     println("Valid transport options are [MPI|TCP]")
     MPI.Finalize()
@@ -56,4 +57,4 @@ println("$t seconds for $nloops loops of send-recv of array size $n")
 # print("EXAMPLE: SENDRECV\n")
 # @mpi_do manager do_sendrecv()
 
-MPI.stop_main_loop(manager)
+MPIClusterManagers.stop_main_loop(manager)
