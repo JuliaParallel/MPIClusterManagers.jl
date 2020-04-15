@@ -191,14 +191,14 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
 end
 
 # Entry point for MPI worker processes for MPI_ON_WORKERS and TCP_TRANSPORT_ALL
-setup_worker(host, port) = setup_worker(host, port, nothing)
-function setup_worker(host, port, cookie)
+setup_worker(host, port; kwargs...) = setup_worker(host, port, nothing; kwargs...)
+function setup_worker(host, port, cookie; stdout_to_master=true, stderr_to_master=true)
     !MPI.Initialized() && MPI.Init()
     # Connect to the manager
     io = connect(IPv4(host), port)
     wait_connected(io)
-    redirect_stdout(io)
-    redirect_stderr(io)
+    stdout_to_master && redirect_stdout(io)
+    stderr_to_master && redirect_stderr(io)
 
     # Send our MPI rank to the manager
     rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -326,7 +326,9 @@ end
 
 # Enter the MPI cluster manager's main loop (does not return on the workers)
 function start_main_loop(mode::TransportMode=TCP_TRANSPORT_ALL;
-                         comm::MPI.Comm=MPI.COMM_WORLD)
+                         comm::MPI.Comm=MPI.COMM_WORLD,
+                         stdout_to_master=true,
+                         stderr_to_master=true)
     !MPI.Initialized() && MPI.Init()
     @assert MPI.Initialized() && !MPI.Finalized()
     if mode == TCP_TRANSPORT_ALL
@@ -359,7 +361,7 @@ function start_main_loop(mode::TransportMode=TCP_TRANSPORT_ALL;
             (obj, status) = MPI.recv(0, 0, comm)
             (host, port, cookie) = obj
             # Call the regular worker entry point
-            setup_worker(host, port, cookie) # does not return
+            setup_worker(host, port, cookie, stdout_to_master=stdout_to_master, stderr_to_master=stderr_to_master) # does not return
         end
     elseif mode == MPI_TRANSPORT_ALL
         comm = MPI.Comm_dup(comm)
