@@ -1,12 +1,14 @@
 # Note: Run this script without using `mpirun`
 
-using MPI, Distributed
+using MPIClusterManagers, Distributed
 using LinearAlgebra: svd
 
 manager = MPIManager(np=4)
 addprocs(manager)
 
 println("Added procs $(procs())")
+
+@everywhere import MPI
 
 println("Running 01-hello as part of a Julia cluster")
 @mpi_do manager (include("01-hello-impl.jl"); do_hello())
