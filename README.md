@@ -91,14 +91,14 @@ mpirun -np 5 julia cman-transport.jl TCP
 
 This launches a total of 5 processes, mpi rank 0 is the julia pid 1. mpi rank 1 is julia pid 2 and so on.
 
-The program must call `MPI.start(TCP_TRANSPORT_ALL)` with argument `TCP_TRANSPORT_ALL`.
+The program must call `MPIClusterManagers.start_main_loop(TCP_TRANSPORT_ALL)` with argument `TCP_TRANSPORT_ALL`.
 On mpi rank 0, it returns a `manager` which can be used with `@mpi_do`
 On other processes (i.e., the workers) the function does not return
 
 
 ### MPIManager: MPI transport - all processes execute MPI code
 
-`MPI.start` must be called with option `MPI_TRANSPORT_ALL` to use MPI as transport.
+`MPIClusterManagers.start_main_loop` must be called with option `MPI_TRANSPORT_ALL` to use MPI as transport.
 ```
 mpirun -np 5 julia cman-transport.jl MPI
 ```
