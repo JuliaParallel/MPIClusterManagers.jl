@@ -1,5 +1,6 @@
 language: julia
 dist: trusty
+osx_image: xcode11.4
 
 os:
   - linux
