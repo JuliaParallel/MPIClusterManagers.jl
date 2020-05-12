@@ -29,7 +29,6 @@ mutable struct MPIManager <: ClusterManager
     mode::TransportMode
 
     launched::Bool # Are the MPI processes running?
-    mpirun_cmd::Cmd # How to start MPI processes
     launch_timeout::Int # seconds
 
     initialized::Bool # All workers registered with us
@@ -51,10 +50,9 @@ mutable struct MPIManager <: ClusterManager
     receiving_done::Channel{Nothing}
 
     function MPIManager(; np::Integer = Sys.CPU_THREADS,
-                          mpirun_cmd::Cmd = `$mpiexec -n $np`,
                           launch_timeout::Real = 60.0,
                           mode::TransportMode = MPI_ON_WORKERS,
-                          master_tcp_interface::String="" )
+                        master_tcp_interface::String="" )
         mgr = new()
         mgr.np = np
         mgr.mpi2j = Dict{Int,Int}()
@@ -64,7 +62,6 @@ mutable struct MPIManager <: ClusterManager
         # Only start MPI processes for MPI_ON_WORKERS
         mgr.launched = mode != MPI_ON_WORKERS
         @assert MPI.Initialized() == mgr.launched
-        mgr.mpirun_cmd = mpirun_cmd
         mgr.launch_timeout = launch_timeout
 
         mgr.initialized = false
@@ -141,8 +138,10 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
             end
             cookie = string(":cookie_",Distributed.cluster_cookie())
             setup_cmds = `import MPIClusterManagers\;MPIClusterManagers.setup_worker'('$(mgr.ip),$(mgr.port),$cookie')'`
-            mpi_cmd = `$(mgr.mpirun_cmd) $(params[:exename]) -e $(Base.shell_escape(setup_cmds))`
-            open(detach(mpi_cmd))
+            MPI.mpiexec() do mpiexec_cmd
+                mpi_cmd = `$mpiexec_cmd -n $(mgr.np) $(params[:exename]) -e $(Base.shell_escape(setup_cmds))`
+                open(detach(mpi_cmd))
+            end
             mgr.launched = true
         end
 

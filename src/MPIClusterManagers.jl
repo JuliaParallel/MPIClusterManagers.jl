@@ -4,7 +4,6 @@ export MPIManager, launch, manage, kill, procs, connect, mpiprocs, @mpi_do, Tran
 
 using Distributed, Serialization
 import MPI
-const mpiexec = isdefined(MPI, :mpiexec_path) ? MPI.mpiexec_path : "mpiexec"
 
 include("mpimanager.jl")
 
