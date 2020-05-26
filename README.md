@@ -19,10 +19,8 @@ It has three modes of operation
 
 - All processes are part of both the MPI as well as Julia cluster. MPI is used as the transport
   for julia messages. This is useful on environments which do not allow TCP/IP connectivity
-  between worker processes
-  
-Note: This package works with Julia 1.0, 1.1 and 1.2. It is broken for Julia 1.3, 1.4.0, and 1.4.1, but
-works with Julia 1.4.2 and later releases.
+  between worker processes Note: This capability works with Julia 1.0, 1.1 and 1.2 and releases
+  after 1.4.2. It is broken for Julia 1.3, 1.4.0, and 1.4.1.
 
 ### MPIManager: only workers execute MPI code
 
