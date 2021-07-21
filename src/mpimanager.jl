@@ -1,5 +1,5 @@
-import Base: kill
-import Sockets: connect, listenany, accept, IPv4, getsockname, getaddrinfo, wait_connected
+
+
 
 
 ################################################################################
@@ -139,7 +139,7 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
             cookie = string(":cookie_",Distributed.cluster_cookie())
             setup_cmds = `import MPIClusterManagers\;MPIClusterManagers.setup_worker'('$(mgr.ip),$(mgr.port),$cookie')'`
             MPI.mpiexec() do mpiexec_cmd
-                mpi_cmd = `$mpiexec_cmd -n $(mgr.np) $(params[:exename]) -e $(Base.shell_escape(setup_cmds))`
+                mpi_cmd = `$mpiexec_cmd -n $(mgr.np) $(params[:exename]) $(params[:exeflags]) -e $(Base.shell_escape(setup_cmds))`
                 open(detach(mpi_cmd))
             end
             mgr.launched = true
@@ -189,30 +189,6 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
     end
 end
 
-# Entry point for MPI worker processes for MPI_ON_WORKERS and TCP_TRANSPORT_ALL
-setup_worker(host, port; kwargs...) = setup_worker(host, port, nothing; kwargs...)
-function setup_worker(host, port, cookie; stdout_to_master=true, stderr_to_master=true)
-    !MPI.Initialized() && MPI.Init()
-    # Connect to the manager
-    io = connect(IPv4(host), port)
-    wait_connected(io)
-    stdout_to_master && redirect_stdout(io)
-    stderr_to_master && redirect_stderr(io)
-
-    # Send our MPI rank to the manager
-    rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    Serialization.serialize(io, rank)
-
-    # Hand over control to Base
-    if cookie == nothing
-        Distributed.start_worker(io)
-    else
-        if isa(cookie, Symbol)
-            cookie = string(cookie)[8:end] # strip the leading "cookie_"
-        end
-        Distributed.start_worker(io, cookie)
-    end
-end
 
 # Manage a worker (e.g. register / deregister it)
 function Distributed.manage(mgr::MPIManager, id::Integer, config::WorkerConfig, op::Symbol)
