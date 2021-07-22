@@ -108,6 +108,8 @@ The following `kwoptions` are supported:
 
  - `launch_timeout`: the number of seconds to wait for workers to connect (default: `60`)
 
+ - `mpiexec`: MPI launcher executable (default: use the launcher from MPI.jl)
+
  - `mpiflags`: additional flags  to pass to `mpiexec`
 
  - `master_tcp_interface`: Server interface to listen on. This allows direct connection
@@ -151,6 +153,7 @@ Distributed.default_addprocs_params(::MPIWorkerManager) =
     merge(Distributed.default_addprocs_params(),
           Dict{Symbol,Any}(
               :launch_timeout => 60.0,
+              :mpiexec        => nothing,
               :mpiflags       => ``,
               :master_tcp_interface => nothing,
           ))
@@ -216,6 +219,7 @@ function Distributed.launch(mgr::MPIWorkerManager,
     dir = params[:dir]
     exename = params[:exename]
     exeflags = params[:exeflags]
+    mpiexec = params[:mpiexec]
     mpiflags = params[:mpiflags]
     if !isnothing(mgr.nprocs)
         mpiflags = `$mpiflags -n $(mgr.nprocs)`
@@ -224,10 +228,15 @@ function Distributed.launch(mgr::MPIWorkerManager,
     cookie = Distributed.cluster_cookie()
     setup_cmds = "import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(ip))),$(port),$(repr(cookie)))"
 
-    MPI.mpiexec() do mpiexec_cmd
-        mpi_cmd = `$mpiexec_cmd $mpiflags $exename $exeflags -e $setup_cmds`
+    if isnothing(mpiexec)
+        MPI.mpiexec() do mpiexec_cmd
+            mpi_cmd = `$mpiexec_cmd $mpiflags $exename $exeflags -e $setup_cmds`
+            open(detach(setenv(mpi_cmd, dir=dir)))
+        end
+    else
+        mpi_cmd = `$mpiexec $mpiflags $exename $exeflags -e $setup_cmds`
         open(detach(setenv(mpi_cmd, dir=dir)))
-    end
+    end        
     mgr.launched = true
 
     # wait with timeout (https://github.com/JuliaLang/julia/issues/36217)
