@@ -226,7 +226,7 @@ function Distributed.launch(mgr::MPIWorkerManager,
     end
     
     cookie = Distributed.cluster_cookie()
-    setup_cmds = "import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(ip))),$(port),$(repr(cookie)))"
+    setup_cmds = "using Distributed; import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(ip))),$(port),$(repr(cookie)))"
 
     if isnothing(mpiexec)
         MPI.mpiexec() do mpiexec_cmd
