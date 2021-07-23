@@ -44,11 +44,11 @@ end
 
 
 """
-    setup_worker(host, port[, cookie])
+    setup_worker2(host, port, cookie)
 
-This is the entrypoint for MPI worker processes.
+This is the entrypoint for MPI worker processes with `MPIWorkerManager`.
 """
-function setup_worker(host, port, cookie=nothing; stdout_to_master=true, stderr_to_master=true)
+function setup_worker2(host, port, cookie=nothing; stdout_to_master=true, stderr_to_master=true)
 
     # Connect to the manager
     ip = parse(IPAddr, host)
@@ -72,8 +72,6 @@ function setup_worker(host, port, cookie=nothing; stdout_to_master=true, stderr_
 end
 
 
-
-
 """
     MPIWorkerManager([nprocs])
 
@@ -81,7 +79,10 @@ A [`ClusterManager`](https://docs.julialang.org/en/v1/stdlib/Distributed/#Distri
 using the MPI.jl launcher [`mpiexec`](https://juliaparallel.github.io/MPI.jl/stable/environment/#MPI.mpiexec).
 
 The workers will all belong to an MPI session, and can communicate using MPI
-operations. The master process (pid 1) is _not_ part of the session, and will communicate
+operations. Note that unlike `MPIManager`, the MPI session will not be initialized, so the
+workers will need to `MPI.Init()`.
+
+The master process (pid 1) is _not_ part of the session, and will communicate
 with the workers via TCP/IP.
 
 # Usage
@@ -226,7 +227,7 @@ function Distributed.launch(mgr::MPIWorkerManager,
     end
     
     cookie = Distributed.cluster_cookie()
-    setup_cmds = "using Distributed; import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(ip))),$(port),$(repr(cookie)))"
+    setup_cmds = "using Distributed; import MPIClusterManagers; MPIClusterManagers.setup_worker2($(repr(string(ip))),$(port),$(repr(cookie)))"
 
     if isnothing(mpiexec)
         MPI.mpiexec() do mpiexec_cmd
