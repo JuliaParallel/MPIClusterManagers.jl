@@ -10,5 +10,6 @@ import Sockets: connect, listenany, accept, IPv4, getsockname, getaddrinfo, wait
 
 include("workermanager.jl")
 include("mpimanager.jl")
+include("worker.jl")
 
 end # module

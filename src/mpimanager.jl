@@ -162,6 +162,7 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
                         # Add config to the correct slot so that MPI ranks and
                         # Julia pids are in the same order
                         rank = Serialization.deserialize(io)
+                        _ = Serialization.deserialize(io) # not used
                         idx = mgr.mode == MPI_ON_WORKERS ? rank+1 : rank
                         configs[idx] = config
                     end
@@ -182,31 +183,6 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
     catch e
         println("Error in MPI launch $e")
         rethrow(e)
-    end
-end
-
-# Entry point for MPI worker processes for MPI_ON_WORKERS and TCP_TRANSPORT_ALL
-setup_worker(host, port; kwargs...) = setup_worker(host, port, nothing; kwargs...)
-function setup_worker(host, port, cookie; stdout_to_master=true, stderr_to_master=true)
-    !MPI.Initialized() && MPI.Init()
-    # Connect to the manager
-    io = connect(IPv4(host), port)
-    wait_connected(io)
-    stdout_to_master && redirect_stdout(io)
-    stderr_to_master && redirect_stderr(io)
-
-    # Send our MPI rank to the manager
-    rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    Serialization.serialize(io, rank)
-
-    # Hand over control to Base
-    if cookie == nothing
-        Distributed.start_worker(io)
-    else
-        if isa(cookie, Symbol)
-            cookie = string(cookie)[8:end] # strip the leading "cookie_"
-        end
-        Distributed.start_worker(io, cookie)
     end
 end
 
