@@ -18,6 +18,8 @@ jobs:
           - 'nightly'
         os:
           - ubuntu-latest
+        arch:
+          - x64
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
