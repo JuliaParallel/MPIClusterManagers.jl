@@ -139,7 +139,7 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
             cookie = string(":cookie_",Distributed.cluster_cookie())
             setup_cmds = `import MPIClusterManagers\;MPIClusterManagers.setup_worker'('$(mgr.ip),$(mgr.port),$cookie')'`
             MPI.mpiexec() do mpiexec_cmd
-                mpi_cmd = `$mpiexec_cmd -n $(mgr.np) $(params[:exename]) -e $(Base.shell_escape(setup_cmds))`
+                mpi_cmd = `$mpiexec_cmd -n $(mgr.np) $(params[:exeflags]) $(params[:exename]) -e $(Base.shell_escape(setup_cmds))`
                 open(detach(mpi_cmd))
             end
             mgr.launched = true
