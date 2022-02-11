@@ -144,7 +144,7 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
                 throw(ErrorException("Reuse of MPIManager is not allowed."))
             end
             cookie = Distributed.cluster_cookie()
-            setup_cmds = "using Distributed; import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(mgr.ip))),$(port),$(repr(cookie)); threadlevel=$(repr(params[:threadlevel])))"
+            setup_cmds = "using Distributed; import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(mgr.ip))),$(mgr.port),$(repr(cookie)); threadlevel=$(repr(params[:threadlevel])))"
             MPI.mpiexec() do mpiexec
                 mpiexec = something(params[:mpiexec], mpiexec)
                 mpiflags = params[:mpiflags]
