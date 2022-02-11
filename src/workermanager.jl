@@ -157,7 +157,7 @@ function Distributed.launch(mgr::MPIWorkerManager,
         mpiexec = something(params[:mpiexec], mpiexec)
         mpiflags = params[:mpiflags]
         if !isnothing(mgr.nprocs)
-            mpiflags = `$mpiflags -n $(mgr.np)`
+            mpiflags = `$mpiflags -n $(mgr.nprocs)`
         end
         exename = params[:exename]
         exeflags = params[:exeflags]
