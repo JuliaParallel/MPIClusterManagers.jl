@@ -1,7 +1,3 @@
-import Base: kill
-import Sockets: connect, listenany, accept, IPv4, getsockname, getaddrinfo, wait_connected
-
-
 ################################################################################
 # MPI Cluster Manager
 # Note: The cluster manager object lives only in the manager process,
@@ -53,6 +49,10 @@ mutable struct MPIManager <: ClusterManager
                           launch_timeout::Real = 60.0,
                           mode::TransportMode = MPI_ON_WORKERS,
                         master_tcp_interface::String="" )
+        if mode == MPI_ON_WORKERS
+            @warn "MPIManager with MPI_ON_WORKERS is deprecated and will be removed in the next release. Use MPIWorkerManager instead."
+        end
+
         mgr = new()
         mgr.np = np
         mgr.mpi2j = Dict{Int,Int}()
@@ -123,10 +123,11 @@ end
 
 Distributed.default_addprocs_params(::MPIManager) =
     merge(Distributed.default_addprocs_params(),
-          Dict{Symbol,Any}(
-                :mpiexec        => nothing,
-                :mpiflags       => ``,
-          ))
+        Dict{Symbol,Any}(
+            :mpiexec        => nothing,
+            :mpiflags       => ``,
+            :threadlevel    => :serialized,
+        ))
 ################################################################################
 # Cluster Manager functionality required by Base, mostly targeting the
 # MPI_ON_WORKERS case
@@ -142,11 +143,16 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
                 println("Try again with a different instance of MPIManager.")
                 throw(ErrorException("Reuse of MPIManager is not allowed."))
             end
-            cookie = string(":cookie_",Distributed.cluster_cookie())
-            setup_cmds = `import MPIClusterManagers\;MPIClusterManagers.setup_worker'('$(mgr.ip),$(mgr.port),$cookie')'`
+            cookie = Distributed.cluster_cookie()
+            setup_cmds = "using Distributed; import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(mgr.ip))),$(mgr.port),$(repr(cookie)); threadlevel=$(repr(params[:threadlevel])))"
             MPI.mpiexec() do mpiexec
                 mpiexec = something(params[:mpiexec], mpiexec)
-                mpi_cmd = `$mpiexec $(params[:mpiflags]) -n $(mgr.np) $(params[:exename]) $(params[:exeflags]) -e $(Base.shell_escape(setup_cmds))`
+                mpiflags = params[:mpiflags]
+                mpiflags = `$mpiflags -n $(mgr.np)`
+                exename = params[:exename]
+                exeflags = params[:exeflags]
+                dir = params[:dir]
+                mpi_cmd = Cmd(`$mpiexec $mpiflags $exename $exeflags -e $setup_cmds`, dir=dir)
                 open(detach(mpi_cmd))
             end
             mgr.launched = true
@@ -173,6 +179,7 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
                         # Add config to the correct slot so that MPI ranks and
                         # Julia pids are in the same order
                         rank = Serialization.deserialize(io)
+                        _ = Serialization.deserialize(io) # not used
                         idx = mgr.mode == MPI_ON_WORKERS ? rank+1 : rank
                         configs[idx] = config
                     end
@@ -193,31 +200,6 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
     catch e
         println("Error in MPI launch $e")
         rethrow(e)
-    end
-end
-
-# Entry point for MPI worker processes for MPI_ON_WORKERS and TCP_TRANSPORT_ALL
-setup_worker(host, port; kwargs...) = setup_worker(host, port, nothing; kwargs...)
-function setup_worker(host, port, cookie; stdout_to_master=true, stderr_to_master=true)
-    !MPI.Initialized() && MPI.Init()
-    # Connect to the manager
-    io = connect(IPv4(host), port)
-    wait_connected(io)
-    stdout_to_master && redirect_stdout(io)
-    stderr_to_master && redirect_stderr(io)
-
-    # Send our MPI rank to the manager
-    rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    Serialization.serialize(io, rank)
-
-    # Hand over control to Base
-    if cookie == nothing
-        Distributed.start_worker(io)
-    else
-        if isa(cookie, Symbol)
-            cookie = string(cookie)[8:end] # strip the leading "cookie_"
-        end
-        Distributed.start_worker(io, cookie)
     end
 end
 
@@ -332,10 +314,11 @@ end
 
 # Enter the MPI cluster manager's main loop (does not return on the workers)
 function start_main_loop(mode::TransportMode=TCP_TRANSPORT_ALL;
+                         threadlevel=:serialized,
                          comm::MPI.Comm=MPI.COMM_WORLD,
                          stdout_to_master=true,
                          stderr_to_master=true)
-    !MPI.Initialized() && MPI.Init()
+    MPI.Initialized() || MPI.Init(;threadlevel=threadlevel)
     @assert MPI.Initialized() && !MPI.Finalized()
     if mode == TCP_TRANSPORT_ALL
         # Base is handling the workers and their event loop
@@ -475,49 +458,6 @@ function stop_main_loop(mgr::MPIManager)
     end
 end
 
-################################################################################
-# MPI-specific communication methods
-
-# Execute a command on all MPI ranks
-# This uses MPI as communication method even if @everywhere uses TCP
-function mpi_do(mgr::MPIManager, expr)
-    !mgr.initialized && wait(mgr.cond_initialized)
-    jpids = keys(mgr.j2mpi)
-    refs = Array{Any}(undef, length(jpids))
-    for (i,p) in enumerate(Iterators.filter(x -> x != myid(), jpids))
-        refs[i] = remotecall(expr, p)
-    end
-    # Execution on local process should be last, since it can block the main
-    # event loop
-    if myid() in jpids
-        refs[end] = remotecall(expr, myid())
-    end
-
-    # Retrieve remote exceptions if any
-    @sync begin
-        for r in refs
-            @async begin
-                resp = remotecall_fetch(r.where, r) do rr
-                    wrkr_result = rr[]
-                    # Only return result if it is an exception, i.e. don't
-                    # return a valid result of a worker computation. This is
-                    # a mpi_do and not mpi_callfetch.
-                    isa(wrkr_result, Exception) ? wrkr_result : nothing
-                end
-                isa(resp, Exception) && throw(resp)
-            end
-        end
-    end
-    nothing
-end
-
-macro mpi_do(mgr, expr)
-    quote
-        # Evaluate expression in Main module
-        thunk = () -> (Core.eval(Main, $(Expr(:quote, expr))); nothing)
-        mpi_do($(esc(mgr)), thunk)
-    end
-end
 
 # All managed Julia processes
 Distributed.procs(mgr::MPIManager) = sort(collect(keys(mgr.j2mpi)))

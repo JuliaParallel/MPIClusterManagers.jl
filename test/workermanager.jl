@@ -8,8 +8,8 @@ import MPI
 # communicate with the workers via TCP
 nprocs = parse(Int, ARGS[1])
 
-mgr = MPIManager(np=nprocs)
-addprocs(mgr)
+mgr = MPIWorkerManager(nprocs)
+addprocs(mgr; exeflags=`--project=$(Base.active_project())`)
 
 refs = []
 for w in workers()
