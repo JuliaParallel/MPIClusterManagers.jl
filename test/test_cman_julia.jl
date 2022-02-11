@@ -30,7 +30,10 @@ s = @distributed (+) for i in 1:10
 end
 @test s == 385
 
-@mpi_do mgr myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-for pid in workers
-    @test remotecall_fetch(() -> n, pid) == mgr.j2mpi[pid]
+@mpi_do mgr begin
+    using MPI
+    myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+end
+for pid in workers()
+    @test remotecall_fetch(() -> myrank, pid) == mgr.j2mpi[pid]
 end
