@@ -42,9 +42,6 @@ The following `kwoptions` are supported:
 
  - `enable_threaded_blas`: Whether the workers should use threaded BLAS.
 
- - `launch_timeout`: the number of seconds to wait for workers to connect
-   (default: `60`)
-
  - `master_tcp_interface`: Server interface to listen on. This allows direct
    connection from other hosts on same network as specified interface
    (otherwise, only connections from `localhost` are allowed).
@@ -84,7 +81,6 @@ end
 Distributed.default_addprocs_params(::MPIWorkerManager) =
     merge(Distributed.default_addprocs_params(),
           Dict{Symbol,Any}(
-                :launch_timeout => 60.0,
                 :mpiexec        => nothing,
                 :mpiflags       => ``,
                 :master_tcp_interface => nothing,
@@ -100,7 +96,6 @@ function Distributed.launch(mgr::MPIWorkerManager,
 
     mgr.launched && error("MPIWorkerManager already launched. Create a new instance to add more workers")
 
-    launch_timeout = params[:launch_timeout]
     master_tcp_interface = params[:master_tcp_interface]
 
     if mgr.nprocs === nothing
@@ -165,6 +160,7 @@ function Distributed.launch(mgr::MPIWorkerManager,
     mgr.launched = true
 
     # wait with timeout (https://github.com/JuliaLang/julia/issues/36217)
+    launch_timeout = Distributed.worker_timeout()
     timer = Timer(launch_timeout) do t
         schedule(connections, InterruptException(), error=true)
     end
