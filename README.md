@@ -22,28 +22,6 @@ It has three modes of operation
   between worker processes Note: This capability works with Julia 1.0, 1.1 and 1.2 and releases
   after 1.4.2. It is broken for Julia 1.3, 1.4.0, and 1.4.1.
 
-### `MPIWorkerManager`: workers share an MPI session
-
-This adds workers which are connected by a single MPI session. Note that the master Julia
-process is _not_ part of the MPI session.
-
-The `@spmd` macro from the SPMD.jl package can be used to run MPI programs on the workers.
-
-```julia
-using Distributed, MPIClusterManagers
-addprocs(MPIWorkerManager(3); exeflags=`--project`)
-
-using SPMD
-@spmd begin
-    using MPI
-    MPI.Init()
-
-    MPI.Reduce(myid(), +, 0, MPI.COMM_WORLD)
-end
-```
-
-
-
 ### MPIManager: only workers execute MPI code
 
 An example is provided in `examples/juliacman.jl`.

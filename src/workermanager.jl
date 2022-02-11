@@ -150,7 +150,6 @@ function Distributed.launch(mgr::MPIWorkerManager,
     # Start the workers
     cookie = Distributed.cluster_cookie()
     setup_cmds = "using Distributed; import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(ip))),$(port),$(repr(cookie)); threadlevel=$(repr(params[:threadlevel])))"
-    @show setup_cmds
     MPI.mpiexec() do mpiexec
         mpiexec = something(params[:mpiexec], mpiexec)
         mpiflags = params[:mpiflags]
