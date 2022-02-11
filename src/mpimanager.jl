@@ -49,6 +49,10 @@ mutable struct MPIManager <: ClusterManager
                           launch_timeout::Real = 60.0,
                           mode::TransportMode = MPI_ON_WORKERS,
                         master_tcp_interface::String="" )
+        if mgr.mode == MPI_ON_WORKERS
+            @warn "MPIManager with MPI_ON_WORKERS is deprecated and will be removed in the next release. Use MPIWorkerManager instead."
+        end
+
         mgr = new()
         mgr.np = np
         mgr.mpi2j = Dict{Int,Int}()
@@ -119,10 +123,11 @@ end
 
 Distributed.default_addprocs_params(::MPIManager) =
     merge(Distributed.default_addprocs_params(),
-          Dict{Symbol,Any}(
-                :mpiexec        => nothing,
-                :mpiflags       => ``,
-          ))
+        Dict{Symbol,Any}(
+            :mpiexec        => nothing,
+            :mpiflags       => ``,
+            :threadlevel    => :serialized,
+        ))
 ################################################################################
 # Cluster Manager functionality required by Base, mostly targeting the
 # MPI_ON_WORKERS case
@@ -139,10 +144,15 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
                 throw(ErrorException("Reuse of MPIManager is not allowed."))
             end
             cookie = string(":cookie_",Distributed.cluster_cookie())
-            setup_cmds = `import MPIClusterManagers\;MPIClusterManagers.setup_worker'('$(mgr.ip),$(mgr.port),$cookie')'`
+            setup_cmds = "using Distributed; import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(mgr.ip))),$(port),$(repr(cookie)); threadlevel=$(repr(params[:threadlevel])))"
             MPI.mpiexec() do mpiexec
                 mpiexec = something(params[:mpiexec], mpiexec)
-                mpi_cmd = `$mpiexec $(params[:mpiflags]) -n $(mgr.np) $(params[:exename]) $(params[:exeflags]) -e $(Base.shell_escape(setup_cmds))`
+                mpiflags = params[:mpiflags]
+                mpiflags = `$mpiflags -n $(mgr.np)`
+                exename = params[:exename]
+                exeflags = params[:exeflags]
+                dir = params[:dir]
+                mpi_cmd = Cmd(`$mpiexec $mpiflags $exename $exeflags -e $(Base.shell_escape(setup_cmds))`, dir=dir)
                 open(detach(mpi_cmd))
             end
             mgr.launched = true
@@ -304,10 +314,11 @@ end
 
 # Enter the MPI cluster manager's main loop (does not return on the workers)
 function start_main_loop(mode::TransportMode=TCP_TRANSPORT_ALL;
+                         threadlevel=:serialized,
                          comm::MPI.Comm=MPI.COMM_WORLD,
                          stdout_to_master=true,
                          stderr_to_master=true)
-    !MPI.Initialized() && MPI.Init()
+    MPI.Initialized() || MPI.Init(;threadlevel=threadlevel)
     @assert MPI.Initialized() && !MPI.Finalized()
     if mode == TCP_TRANSPORT_ALL
         # Base is handling the workers and their event loop

@@ -5,7 +5,8 @@
     MPIWorkerManager([nprocs])
 
 A [`ClusterManager`](https://docs.julialang.org/en/v1/stdlib/Distributed/#Distributed.ClusterManager)
-using the MPI.jl launcher [`mpiexec`](https://juliaparallel.github.io/MPI.jl/stable/environment/#MPI.mpiexec).
+using the MPI.jl launcher
+[`mpiexec`](https://juliaparallel.github.io/MPI.jl/stable/environment/#MPI.mpiexec).
 
 The workers will all belong to an MPI session, and can communicate using MPI
 operations. Note that unlike `MPIManager`, the MPI session will not be
@@ -28,29 +29,28 @@ The following `kwoptions` are supported:
 
  - `dir`: working directory on the workers.
 
+ - `mpiexec`: MPI launcher executable (default: use the launcher from MPI.jl)
+
+ - `mpiflags`: additional flags  to pass to `mpiexec`
+
  - `exename`: Julia executable on the workers.
 
  - `exeflags`: additional flags to pass to the Julia executable.
+
+ - `threadlevel`: the threading level to initialize MPI. See
+ [`MPI.Init()`](https://juliaparallel.github.io/MPI.jl/stable/environment/#MPI.Init)
+ for details.
 
  - `topology`: how the workers connect to each other.
 
  - `enable_threaded_blas`: Whether the workers should use threaded BLAS.
 
- - `initmpi`: whether MPI should be initialized on the workers: the default is
-   `false`, in which case it will try to determine each rank from an environment
-   variable.
-
  - `launch_timeout`: the number of seconds to wait for workers to connect
    (default: `60`)
-
- - `mpiexec`: MPI launcher executable (default: use the launcher from MPI.jl)
-
- - `mpiflags`: additional flags  to pass to `mpiexec`
 
  - `master_tcp_interface`: Server interface to listen on. This allows direct
    connection from other hosts on same network as specified interface
    (otherwise, only connections from `localhost` are allowed).
-
 """
 mutable struct MPIWorkerManager <: ClusterManager
     "number of MPI processes"
@@ -87,11 +87,11 @@ end
 Distributed.default_addprocs_params(::MPIWorkerManager) =
     merge(Distributed.default_addprocs_params(),
           Dict{Symbol,Any}(
-                :initmpi        => false,
                 :launch_timeout => 60.0,
                 :mpiexec        => nothing,
                 :mpiflags       => ``,
                 :master_tcp_interface => nothing,
+                :threadlevel    => :serialized,
           ))
 
 
@@ -109,20 +109,19 @@ function Distributed.launch(mgr::MPIWorkerManager,
     if mgr.nprocs === nothing
         configs = WorkerConfig[]
     else
-        configs =  Vector{WorkerConfig}(undef, mgr.nprocs)
+        configs = Vector{WorkerConfig}(undef, mgr.nprocs)
     end
 
     # Set up listener
-    if !isnothing(master_tcp_interface)
+    port, server = if !isnothing(master_tcp_interface)
         # Listen on specified server interface
         # This allows direct connection from other hosts on same network as
         # specified interface.
-        port, server =
-            listenany(getaddrinfo(master_tcp_interface), 11000)
+        listenany(getaddrinfo(master_tcp_interface), 11000) # port is just a hint
     else
         # Listen on default interface (localhost)
         # This precludes direct connection from other hosts.
-        port, server = listenany(11000)
+        listenany(11000)
     end
     ip = getsockname(server)[1]
 
@@ -152,26 +151,19 @@ function Distributed.launch(mgr::MPIWorkerManager,
     end
 
     # Start the workers
-    dir = params[:dir]
-    exename = params[:exename]
-    exeflags = params[:exeflags]
-    mpiexec = params[:mpiexec]
-    mpiflags = params[:mpiflags]
-    if !isnothing(mgr.nprocs)
-        mpiflags = `$mpiflags -n $(mgr.nprocs)`
-    end
-
     cookie = Distributed.cluster_cookie()
-    setup_cmds = "using Distributed; import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(ip))),$(port),$(repr(cookie)); initmpi=$(params[:initmpi]))"
-
-    if isnothing(mpiexec)
-        MPI.mpiexec() do mpiexec_cmd
-            mpi_cmd = `$mpiexec_cmd $mpiflags $exename $exeflags -e $setup_cmds`
-            open(detach(setenv(mpi_cmd, dir=dir)))
+    setup_cmds = "using Distributed; import MPIClusterManagers; MPIClusterManagers.setup_worker($(repr(string(ip))),$(port),$(repr(cookie)); threadlevel=$(repr(params[:threadlevel])))"
+    MPI.mpiexec() do mpiexec
+        mpiexec = something(params[:mpiexec], mpiexec)
+        mpiflags = params[:mpiflags]
+        if !isnothing(mgr.nprocs)
+            mpiflags = `$mpiflags -n $(mgr.np)`
         end
-    else
-        mpi_cmd = `$mpiexec $mpiflags $exename $exeflags -e $setup_cmds`
-        open(detach(setenv(mpi_cmd, dir=dir)))
+        exename = params[:exename]
+        exeflags = params[:exeflags]
+        dir = params[:dir]
+        mpi_cmd = Cmd(`$mpiexec $mpiflags $exename $exeflags -e $(Base.shell_escape(setup_cmds))`, dir=dir)
+        open(detach(mpi_cmd))
     end
     mgr.launched = true
 
