@@ -117,6 +117,12 @@ function Base.show(io::IO, mgr::MPIManager)
     print(io, "MPI.MPIManager(np=$(mgr.np),launched=$(mgr.launched),mode=$(mgr.mode))")
 end
 
+Distributed.default_addprocs_params(::MPIManager) =
+    merge(Distributed.default_addprocs_params(),
+          Dict{Symbol,Any}(
+                :mpiexec        => nothing,
+                :mpiflags       => ``,
+          ))
 ################################################################################
 # Cluster Manager functionality required by Base, mostly targeting the
 # MPI_ON_WORKERS case
@@ -134,8 +140,9 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
             end
             cookie = string(":cookie_",Distributed.cluster_cookie())
             setup_cmds = `import MPIClusterManagers\;MPIClusterManagers.setup_worker'('$(mgr.ip),$(mgr.port),$cookie')'`
-            MPI.mpiexec() do mpiexec_cmd
-                mpi_cmd = `$mpiexec_cmd -n $(mgr.np) $(params[:exename]) $(params[:exeflags]) -e $(Base.shell_escape(setup_cmds))`
+            MPI.mpiexec() do mpiexec
+                mpiexec = something(params[:mpiexec], mpiexec)
+                mpi_cmd = `$mpiexec $(params[:mpiflags]) -n $(mgr.np) $(params[:exename]) $(params[:exeflags]) -e $(Base.shell_escape(setup_cmds))`
                 open(detach(mpi_cmd))
             end
             mgr.launched = true
