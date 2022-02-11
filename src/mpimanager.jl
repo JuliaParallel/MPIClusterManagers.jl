@@ -49,7 +49,7 @@ mutable struct MPIManager <: ClusterManager
                           launch_timeout::Real = 60.0,
                           mode::TransportMode = MPI_ON_WORKERS,
                         master_tcp_interface::String="" )
-        if mgr.mode == MPI_ON_WORKERS
+        if mode == MPI_ON_WORKERS
             @warn "MPIManager with MPI_ON_WORKERS is deprecated and will be removed in the next release. Use MPIWorkerManager instead."
         end
 
@@ -152,7 +152,7 @@ function Distributed.launch(mgr::MPIManager, params::Dict,
                 exename = params[:exename]
                 exeflags = params[:exeflags]
                 dir = params[:dir]
-                mpi_cmd = Cmd(`$mpiexec $mpiflags $exename $exeflags -e $(Base.shell_escape(setup_cmds))`, dir=dir)
+                mpi_cmd = Cmd(`$mpiexec $mpiflags $exename $exeflags -e $setup_cmds`, dir=dir)
                 open(detach(mpi_cmd))
             end
             mgr.launched = true
