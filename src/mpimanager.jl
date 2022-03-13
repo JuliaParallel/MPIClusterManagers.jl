@@ -223,7 +223,7 @@ function Distributed.manage(mgr::MPIManager, id::Integer, config::WorkerConfig, 
             end
         end
     elseif op == :deregister
-        info("pid=$(getpid()) id=$id op=$op")
+        @info("pid=$(getpid()) id=$id op=$op")
         # TODO: Sometimes -- very rarely -- Julia calls this `deregister`
         # function, and then outputs a warning such as """error in running
         # finalizer: ErrorException("no process with id 3 exists")""". These
@@ -231,12 +231,12 @@ function Distributed.manage(mgr::MPIManager, id::Integer, config::WorkerConfig, 
         # here.
     elseif op == :interrupt
         # TODO: This should never happen if we rmprocs the workers properly
-        info("pid=$(getpid()) id=$id op=$op")
+        @info("pid=$(getpid()) id=$id op=$op")
         @assert false
     elseif op == :finalize
         # This is called from within a finalizer after deregistering; do nothing
     else
-        info("pid=$(getpid()) id=$id op=$op")
+        @info("pid=$(getpid()) id=$id op=$op")
         @assert false # Unsupported operation
     end
 end
