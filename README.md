@@ -1,7 +1,6 @@
 # MPIClusterManagers.jl
 
-[![Travis Status](https://travis-ci.org/JuliaParallel/MPIClusterManagers.jl.svg?branch=master)](https://travis-ci.org/JuliaParallel/MPIClusterManagers.jl) [![Appveyor status](https://ci.appveyor.com/api/projects/status/xwpcsmp0fg582tf4/branch/master?svg=true)](https://ci.appveyor.com/project/simonbyrne/mpiclustermanagers-jl/branch/master)
-
+[![CI](https://github.com/JuliaParallel/MPIClusterManagers.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaParallel/MPIClusterManagers.jl/actions/workflows/CI.yml)
 
 ## MPI and Julia parallel constructs together
 
