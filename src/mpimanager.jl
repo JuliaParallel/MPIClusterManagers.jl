@@ -397,7 +397,7 @@ end
 function receive_event_loop(mgr::MPIManager)
     num_send_loops = 0
     while !isready(mgr.initiate_shutdown)
-        (hasdata, stat) = MPI.Iprobe(MPI.MPI_ANY_SOURCE, 0, mgr.comm)
+        (hasdata, stat) = MPI.Iprobe(isdefined(MPI, :ANY_SOURCE) ? MPI.ANY_SOURCE : MPI.MPI_ANY_SOURCE, 0, mgr.comm)
         if hasdata
             count = MPI.Get_count(stat, UInt8)
             buf = Array{UInt8}(undef, count)
