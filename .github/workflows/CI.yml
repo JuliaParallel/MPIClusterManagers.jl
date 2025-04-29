@@ -19,7 +19,7 @@ jobs:
           - '1.9'
           - '1.10' # Current LTS
           - '1.11'
-          - '1'
+          # - '1' # TODO: Uncomment this line.
           - 'nightly'
         os:
           - ubuntu-latest
