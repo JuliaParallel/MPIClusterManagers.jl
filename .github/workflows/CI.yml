@@ -24,6 +24,9 @@ jobs:
         os:
           - ubuntu-latest
         arch:
+          # Important note: the value of `arch` only affects the architecture of the Julia binary.
+          # It does not affect the CPU architecture of the GitHub runner (the GitHub virtual machine that runs the job).
+          # GitHub runners are always 64-bit virtual machines.
           - x64
           - x86
         include:
