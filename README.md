@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/JuliaParallel/MPIClusterManagers.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaParallel/MPIClusterManagers.jl/actions/workflows/CI.yml)
 
+[![codecov](https://codecov.io/github/JuliaParallel/MPIClusterManagers.jl/graph/badge.svg?token=0G39r3DkCn)](https://codecov.io/github/JuliaParallel/MPIClusterManagers.jl)
+
 ## MPI and Julia parallel constructs together
 
 In order for MPI calls to be made from a Julia cluster, it requires the use of
